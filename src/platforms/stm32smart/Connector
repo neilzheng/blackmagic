@@ -1,0 +1,6 @@
+Usage onboard JTAG J5 to connect your board
+
+SWO:
+Mode 1:     TDO/SWO/PB3
+Mode 2:     PA10            (Default)
+

@@ -1,0 +1,30 @@
+Blackmagic for the STM32_Smart V2.0 and Bluepill
+========================================
+
+http://wiki.stm32duino.com/index.php?title=STM32_Smart_V2.0
+
+The board comes with a JTAG header on board. We reconfigured it to reuse this JTAG header.
+LED is on PC13 (low active), Button on PA0 (low active). 
+
+Mode 1:
+Manchester, build with:
+make PROBE_HOST=stm32smart SWO_TRACE_MODE=1
+
+Mode 2 (default):
+USART, build with:
+make PROBE_HOST=stm32smart
+or:
+make PROBE_HOST=stm32smart SWO_TRACE_MODE=2
+
+Pull low on PA0 forces DFU.
+With mode 1, SWO RX is in JTAG header TDO/SWO/PB3.
+With mode 2, SWO RX is PA10.
+
+USART:
+Mode 1:
+RX      - PA10
+TX      - PA9
+
+Mode 2:
+RX      - PA3
+TX      - PA2
