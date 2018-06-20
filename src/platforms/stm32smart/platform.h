@@ -132,6 +132,9 @@
 #define TRACE_IRQ   NVIC_TIM2_IRQ
 #define TRACE_ISR   tim2_isr
 
+#define TRACE_CPU_FREQ			72000000
+#define TRACE_SAMPLE_RATE		18000000
+
 #else
 #define NUM_TRACE_PACKETS		(128)		/* This is an 8K buffer */
 

@@ -54,6 +54,11 @@ void traceswo_init(void)
 	timer_ic_set_input(TRACE_TIM, TIM_IC1, TIM_IC_IN_TI2);
 	timer_ic_set_input(TRACE_TIM, TIM_IC2, TIM_IC_IN_TI2);
 
+	/*
+	 * set sample rate
+	 */
+	timer_set_prescaler(TRACE_TIM, TRACE_CPU_FREQ / TRACE_SAMPLE_RATE);
+
 	/* Capture CH2 on rising edge, CH1 on falling edge */
 	timer_ic_set_polarity(TRACE_TIM, TIM_IC2, TIM_IC_RISING);
 	timer_ic_set_polarity(TRACE_TIM, TIM_IC1, TIM_IC_FALLING);
@@ -116,8 +121,8 @@ void TRACE_ISR(void)
 	static uint8_t notstart;
 
 	/* Reset decoder state if capture overflowed */
-	if (sr & (TIM_SR_CC2OF | TIM_SR_UIF)) {
-		timer_clear_flag(TRACE_TIM, TIM_SR_CC2OF | TIM_SR_UIF);
+	if (sr & (TIM_SR_CC1OF | TIM_SR_CC2OF | TIM_SR_UIF)) {
+		timer_clear_flag(TRACE_TIM, TIM_SR_CC1OF | TIM_SR_CC2OF | TIM_SR_UIF);
 		if (!(sr & (TIM_SR_CC2IF)))
 			goto flush_and_reset;
 	}

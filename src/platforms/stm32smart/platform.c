@@ -84,13 +84,13 @@ void platform_init(void)
 	rcc_periph_clock_enable(RCC_USB);
 	rcc_periph_clock_enable(RCC_GPIOA);
 	rcc_periph_clock_enable(RCC_GPIOB);
-    rcc_periph_clock_enable(RCC_GPIOC);
+	rcc_periph_clock_enable(RCC_GPIOC);
 	rcc_periph_clock_enable(RCC_CRC);
 	rcc_periph_clock_enable(RCC_AFIO);
 
-    /* Unmap JTAG & SWD Pins so we can reuse as GPIO */
-    /* remap tim2 to PA15/PB3/PB10/PB11 */
-    gpio_primary_remap(AFIO_MAPR_SWJ_CFG_JTAG_OFF_SW_OFF, AFIO_MAPR_TIM2_REMAP_FULL_REMAP);
+	/* Unmap JTAG & SWD Pins so we can reuse as GPIO */
+	/* remap tim2 to PA15/PB3/PB10/PB11 */
+	gpio_primary_remap(AFIO_MAPR_SWJ_CFG_JTAG_OFF_SW_OFF, AFIO_MAPR_TIM2_REMAP_FULL_REMAP);
 
 	/* Setup JTAG GPIO ports */
 	gpio_set_mode(TMS_PORT, GPIO_MODE_OUTPUT_10_MHZ,
@@ -105,7 +105,7 @@ void platform_init(void)
 			GPIO_CNF_OUTPUT_PUSHPULL,
 			LED_IDLE_RUN);
 	gpio_set(LED_PORT, LED_IDLE_RUN);
-    gpio_clear(LED_PORT_UART, LED_UART);
+	gpio_clear(LED_PORT_UART, LED_UART);
 
 	/* Enable SRST output. Original uses a NPN to pull down, so setting the
 	 * output HIGH asserts. Mini is directly connected so use open drain output
@@ -149,7 +149,7 @@ const char *platform_target_voltage(void)
 void platform_request_boot(void)
 {
 	uint32_t crl = GPIOA_CRL;
-    rcc_periph_clock_enable(RCC_GPIOA);
+	rcc_periph_clock_enable(RCC_GPIOA);
 	/* Assert bootloader marker.
 	 * Enable Pull on GPIOA1. We don't rely on the external pin
 	 * really pulled, but only on the value of the CNF register
@@ -159,5 +159,5 @@ void platform_request_boot(void)
 	crl |= 0x80;
 	GPIOA_CRL = crl;
 	SCB_VTOR = 0;
-    gpio_clear(GPIOA, GPIO1);
+	gpio_clear(GPIOA, GPIO1);
 }

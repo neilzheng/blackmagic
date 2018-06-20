@@ -2,6 +2,7 @@ CROSS_COMPILE ?= arm-none-eabi-
 CC = $(CROSS_COMPILE)gcc
 OBJCOPY = $(CROSS_COMPILE)objcopy
 SWO_TRACE_MODE ?= 2
+FORCE_FLASH_128K ?= 0
 
 CFLAGS += -Istm32/include -mcpu=cortex-m3 -mthumb \
 	-DSTM32F1 -DBLACKMAGIC -DSWO_TRACE_MODE=$(SWO_TRACE_MODE) -I../libopencm3/include \
@@ -28,14 +29,22 @@ SRC += 	cdcacm.c	\
 	timing_stm32.c
 
 ifeq ($(SWO_TRACE_MODE), 1)
-    SRC += traceswo_stm32smart.c
+	SRC += traceswo_stm32smart.c
 else
-    SRC += traceswoasync.c
+	SRC += traceswoasync.c
+endif
+
+DFU_OBJ = usbdfu.o dfu_f1.o
+
+ifeq ($(FORCE_FLASH_128K), 1)
+	DFU_OBJ += dfucore_stm32smart.o
+else
+	DFU_OBJ += dfucore.o
 endif
 
 all:	blackmagic.bin blackmagic_dfu.bin blackmagic_dfu.hex
 
-blackmagic_dfu: usbdfu.o dfucore.o dfu_f1.o
+blackmagic_dfu: $(DFU_OBJ)
 	@echo "  LD      $@"
 	$(Q)$(CC) $^ -o $@ $(LDFLAGS_BOOT)
 
