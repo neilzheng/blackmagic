@@ -47,7 +47,7 @@ void traceswo_init(void)
 	/* Refer to ST doc RM0008 - STM32F10xx Reference Manual.
 	 * Section 14.3.4 - 14.3.6 (General Purpose Timer - Input Capture)
 	 *
-	 * CCR1 captures cycle time, CCR2 captures high time
+	 * CCR2 captures cycle time, CCR1 captures high time
 	 */
 
 	/* Use TI2 as capture input for CH1 and CH2 */
@@ -116,9 +116,9 @@ void TRACE_ISR(void)
 	static uint8_t notstart;
 
 	/* Reset decoder state if capture overflowed */
-	if (sr & (TIM_SR_CC1OF | TIM_SR_UIF)) {
-		timer_clear_flag(TRACE_TIM, TIM_SR_CC1OF | TIM_SR_UIF);
-		if (!(sr & (TIM_SR_CC2IF | TIM_SR_CC1IF)))
+	if (sr & (TIM_SR_CC2OF | TIM_SR_UIF)) {
+		timer_clear_flag(TRACE_TIM, TIM_SR_CC2OF | TIM_SR_UIF);
+		if (!(sr & (TIM_SR_CC2IF)))
 			goto flush_and_reset;
 	}
 
@@ -129,7 +129,7 @@ void TRACE_ISR(void)
 	if ((bt && (((duty / bt) > 2) || ((duty / bt) == 0))) || (duty == 0))
 		goto flush_and_reset;
 
-	if(!(sr & TIM_SR_CC1IF)) notstart = 1;
+	if(!(sr & (TIM_SR_CC2IF))) notstart = 1;
 
 	if (!bt) {
 		if (notstart) {
@@ -159,7 +159,7 @@ void TRACE_ISR(void)
 		decbuf_pos++;
 	}
 
-	if (!(sr & TIM_SR_CC1IF) || (((cycle - duty) / bt) > 2))
+	if (!(sr & (TIM_SR_CC2IF)) || (((cycle - duty) / bt) > 2))
 		goto flush_and_reset;
 
 	if (((cycle - duty) / bt) > 1) {
