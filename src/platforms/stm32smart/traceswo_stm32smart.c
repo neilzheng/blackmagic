@@ -54,17 +54,12 @@ void traceswo_init(void)
 	timer_ic_set_input(TRACE_TIM, TIM_IC1, TIM_IC_IN_TI2);
 	timer_ic_set_input(TRACE_TIM, TIM_IC2, TIM_IC_IN_TI2);
 
-	/*
-	 * set sample rate
-	 */
-	timer_set_prescaler(TRACE_TIM, TRACE_CPU_FREQ / TRACE_SAMPLE_RATE);
-
 	/* Capture CH2 on rising edge, CH1 on falling edge */
 	timer_ic_set_polarity(TRACE_TIM, TIM_IC2, TIM_IC_RISING);
 	timer_ic_set_polarity(TRACE_TIM, TIM_IC1, TIM_IC_FALLING);
 
 	/* Trigger on Filtered Timer Input 2 (TI2FP2) */
-    timer_slave_set_trigger(TRACE_TIM, TIM_SMCR_TS_TI2FP2);
+	timer_slave_set_trigger(TRACE_TIM, TIM_SMCR_TS_TI2FP2);
 
 	/* Slave reset mode: reset counter on trigger */
 	timer_slave_set_mode(TRACE_TIM, TIM_SMCR_SMS_RM);
@@ -107,8 +102,6 @@ void trace_buf_drain(usbd_device *dev, uint8_t ep)
 	trace_usb_buf_size = 0;
 }
 
-#define ALLOWED_DUTY_ERROR 5
-
 void TRACE_ISR(void)
 {
 	uint16_t sr = TIM_SR(TRACE_TIM);
@@ -120,18 +113,28 @@ void TRACE_ISR(void)
 	static uint8_t halfbit;
 	static uint8_t notstart;
 
+	static uint32_t bt8x;
+	static uint32_t bt24x;
+
 	/* Reset decoder state if capture overflowed */
 	if (sr & (TIM_SR_CC1OF | TIM_SR_CC2OF | TIM_SR_UIF)) {
 		timer_clear_flag(TRACE_TIM, TIM_SR_CC1OF | TIM_SR_CC2OF | TIM_SR_UIF);
-		if (!(sr & (TIM_SR_CC2IF)))
+		if (!(sr & (TIM_SR_CC2IF|TIM_SR_UIF)))
 			goto flush_and_reset;
 	}
 
 	cycle = TIM_CCR2(TRACE_TIM);
 	duty = TIM_CCR1(TRACE_TIM);
 
+	uint16_t low;
+	uint32_t cycle4x;
+	uint32_t duty8x = ((uint32_t) duty) << 3;
+	uint32_t duty16x = ((uint32_t) duty) << 4;
+	uint32_t low8x;
+	uint32_t low16x;
+
 	/* Reset decoder state if crazy shit happened */
-	if ((bt && (((duty / bt) > 2) || ((duty / bt) == 0))) || (duty == 0))
+	if ((bt && ((duty8x > bt24x) || (duty8x < bt8x - bt))) || (duty == 0))
 		goto flush_and_reset;
 
 	if(!(sr & (TIM_SR_CC2IF))) notstart = 1;
@@ -142,19 +145,23 @@ void TRACE_ISR(void)
 			return;
 		}
 		/* First bit, sync decoder */
-		duty -= ALLOWED_DUTY_ERROR;
-		if (((cycle / duty) != 2) &&
-		    ((cycle / duty) != 3))
+
+		cycle4x = ((uint32_t) cycle) << 2;
+		if ((cycle4x >= duty16x) ||
+			(cycle4x < duty8x - duty))
 			return;
+
 		bt = duty;
+		bt8x = ((uint32_t) bt) << 3;
+		bt24x = bt8x * 3;
 		lastbit = 1;
 		halfbit = 0;
-		timer_set_period(TRACE_TIM, duty * 6);
+		timer_set_period(TRACE_TIM, bt8x);
 		timer_clear_flag(TRACE_TIM, TIM_SR_UIF);
 		timer_enable_irq(TRACE_TIM, TIM_DIER_UIE);
 	} else {
 		/* If high time is extended we need to flip the bit */
-		if ((duty / bt) > 1) {
+		if (duty16x > bt24x) {
 			if (!halfbit) /* lost sync somehow */
 				goto flush_and_reset;
 			halfbit = 0;
@@ -164,10 +171,9 @@ void TRACE_ISR(void)
 		decbuf_pos++;
 	}
 
-	if (!(sr & (TIM_SR_CC2IF)) || (((cycle - duty) / bt) > 2))
-		goto flush_and_reset;
-
-	if (((cycle - duty) / bt) > 1) {
+	low = cycle - duty;
+	low16x = ((uint32_t) low) << 4;
+	if (low16x > bt24x) {
 		/* If low time extended we need to pack another bit. */
 		if (halfbit) /* this is a valid stop-bit or we lost sync */
 			goto flush_and_reset;
@@ -175,6 +181,11 @@ void TRACE_ISR(void)
 		lastbit ^= 1;
 		decbuf[decbuf_pos >> 3] |= lastbit << (decbuf_pos & 7);
 		decbuf_pos++;
+
+		low8x = ((uint32_t) low) << 3;
+		if (!(sr & (TIM_SR_CC2IF)) || low8x > bt24x) {
+			goto flush_and_reset;
+		}
 	}
 
 	if (decbuf_pos < 128)
